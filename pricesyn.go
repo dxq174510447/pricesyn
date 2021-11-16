@@ -1,0 +1,8 @@
+package pricesyn
+
+/**
+
+ */
+func main() {
+
+}
