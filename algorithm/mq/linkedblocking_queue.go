@@ -1,10 +1,16 @@
 package mq
 
 import (
+	"fmt"
+	"pricesyn/util"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+type IdNoder interface {
+	IdKey() string
+}
 
 type LinkedBlockingQueue struct {
 	head     *LinkedNode
@@ -17,7 +23,7 @@ type LinkedBlockingQueue struct {
 
 //Poll Retrieves and removes the head of this queue, or returns null if this queue is empty
 func (l *LinkedBlockingQueue) Poll(sec int) interface{} {
-	if *l.count == 0 && sec > 0{
+	if *l.count == 0 && sec > 0 {
 		// 要么有数据插入到队列 要么等待N second 之后 返回nil
 		select {
 		case <-l.syn:
@@ -77,6 +83,28 @@ func (l *LinkedBlockingQueue) Offer(ele interface{}) {
 			// 保证l.syn不被锁住
 		}
 	}
+}
+
+func (l *LinkedBlockingQueue) PrintLink() {
+	var link []interface{}
+	var current *LinkedNode = l.head
+	var index int = 0
+	for {
+		if current == nil {
+			break
+		}
+		if index == 0 {
+			link = append(link, "头部")
+			current = current.Next
+			index++
+			continue
+		}
+		idNode := current.Item.(IdNoder)
+		link = append(link, idNode.IdKey())
+		current = current.Next
+		index++
+	}
+	fmt.Println(util.JsonUtil.To2String(link))
 }
 
 func NewLinkedBlockingQueue() *LinkedBlockingQueue {
