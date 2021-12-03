@@ -1,6 +1,9 @@
 package graph
 
-import "sync"
+import (
+	"strconv"
+	"sync"
+)
 
 type GraphNode struct {
 	Name      string
@@ -11,8 +14,9 @@ type GraphNode struct {
 }
 
 type GraphLink struct {
-	From *GraphNode
-	To   *GraphNode
+	From   *GraphNode
+	To     *GraphNode
+	Weight int
 }
 
 type Graph struct {
@@ -43,7 +47,8 @@ func (g *Graph) AddGraphNode(name string) *GraphNode {
 	g.NodeMap[name] = n
 	return n
 }
-func (g *Graph) AddGraphLink(from, to *GraphNode, direction bool) *GraphLink {
+
+func (g *Graph) AddGraphWeightLink(from, to *GraphNode, direction bool, weight int) *GraphLink {
 	g.init()
 	if direction {
 		// 有向图
@@ -51,8 +56,9 @@ func (g *Graph) AddGraphLink(from, to *GraphNode, direction bool) *GraphLink {
 			return link
 		} else {
 			link = &GraphLink{
-				From: from,
-				To:   to,
+				From:   from,
+				To:     to,
+				Weight: weight,
 			}
 			from.Target = append(from.Target, link)
 			from.targetMap[to.Name] = link
@@ -87,12 +93,27 @@ func (g *Graph) AddGraphLink(from, to *GraphNode, direction bool) *GraphLink {
 	}
 }
 
+func (g *Graph) AddGraphLink(from, to *GraphNode, direction bool) *GraphLink {
+	return g.AddGraphWeightLink(from, to, direction, -1)
+}
+
 func NewSimpleGraph(ts [][]string, direction bool) *Graph {
 	g := &Graph{}
 	for _, link := range ts {
 		fromNode := g.AddGraphNode(link[0])
 		toNode := g.AddGraphNode(link[1])
 		g.AddGraphLink(fromNode, toNode, direction)
+	}
+	return g
+}
+
+func NewWeightGraph(ts [][]string) *Graph {
+	g := &Graph{}
+	for _, link := range ts {
+		fromNode := g.AddGraphNode(link[0])
+		toNode := g.AddGraphNode(link[1])
+		weight, _ := strconv.Atoi(link[2])
+		g.AddGraphWeightLink(fromNode, toNode, true, weight)
 	}
 	return g
 }
