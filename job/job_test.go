@@ -78,3 +78,4 @@ func TestCronNew1(t *testing.T) {
 	t1 := time.Time{}
 	fmt.Println(util.DateUtil.FormatByType(&t1,util.DatePattern1))
 }
+
