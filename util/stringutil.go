@@ -9,7 +9,6 @@ import (
 	"text/template"
 )
 
-
 const letterBytes1 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 
 type stringUtil struct {
@@ -70,8 +69,19 @@ func (u *stringUtil) GetRandomStr1(n int) string {
 	return string(b)
 }
 
+func (u *stringUtil) FieldName(field string) string {
+	fs := strings.Split(field, "_")
+	var r1 []string
+	for _, f := range fs {
+		if f == "" {
+			continue
+		}
+		r1 = append(r1, strings.Title(f))
+	}
+	return strings.Join(r1, "")
+}
 
-func (u *stringUtil) GetByTpl(tplStr string,target interface{},funcMap template.FuncMap) (string,error) {
+func (u *stringUtil) GetByTpl(tplStr string, target interface{}, funcMap template.FuncMap) (string, error) {
 	var tpl *template.Template
 	if funcMap == nil || len(funcMap) == 0 {
 		tpl = template.Must(template.New(fmt.Sprintf("%s-%s", DateUtil.FormatNowByType(DatePattern2), StringUtil.GetRandomStr(5))).Parse(tplStr))
@@ -83,11 +93,10 @@ func (u *stringUtil) GetByTpl(tplStr string,target interface{},funcMap template.
 
 	err := tpl.Execute(buf, target)
 	if err != nil {
-		return "",err
+		return "", err
 	}
-	return buf.String(),nil
+	return buf.String(), nil
 }
-
 
 func (u *stringUtil) GetPhoneCode(phone string, area string) *countryCode {
 	p := strings.TrimSpace(phone)
