@@ -11,10 +11,10 @@ func TestDbFactory_Get(t *testing.T) {
 	factory := DbFactory{}
 	ctx := context.Background()
 	go func() {
-		factory.Get(ctx)
+		factory.GetDb(ctx)
 	}()
 	go func() {
-		factory.Get(ctx)
+		factory.GetDb(ctx)
 	}()
 
 	time.Sleep(time.Hour * 1)

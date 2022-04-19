@@ -34,11 +34,24 @@ func TestPointer_New(t *testing.T) {
 	AllTest(context.Background(), "haha", BeiheTest)
 
 	var aa []string = []string{"a", "b"}
+	mk := make(map[int]int)
+	for i := 0; i < 10000; i++ {
+		mk[i] = i
+	}
 	for i := range aa {
 		j := i
 		go func() {
-			time.Sleep(time.Second * 5)
-			fmt.Println(j)
+			//time.Sleep(time.Second * 5)
+			//fmt.Println(j)
+			defer func() {
+				if err := recover(); err != nil {
+					fmt.Printf("%v", err)
+				}
+			}()
+
+			for k, v := range mk {
+				fmt.Println(j, k, v)
+			}
 		}()
 
 	}
