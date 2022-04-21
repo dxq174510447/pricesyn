@@ -1,27 +1,30 @@
-package util
+package cache
 
 import (
 	"context"
 	"github.com/hashicorp/golang-lru"
-	"math"
 	"sync"
 	"time"
 )
 
-type cacheUtil struct {
-	initLock  sync.Once
-	cachePool *lru.TwoQueueCache
+type Cache struct {
+	initLock   sync.Once
+	cachePool  *lru.TwoQueueCache
+	timerClear *CacheTimeOutClear
 }
 
-func (c *cacheUtil) init(ctx context.Context) error {
+func (c *Cache) init(ctx context.Context) error {
 	var err error
 	c.initLock.Do(func() {
 		c.cachePool, err = lru.New2Q(500000)
+		c.timerClear = &CacheTimeOutClear{
+			CachePool: c.cachePool,
+		}
 	})
 	return err
 }
 
-func (c *cacheUtil) Set(ctx context.Context, key string, value interface{}, timeOutSecond int64) {
+func (c *Cache) Set(ctx context.Context, key string, value interface{}, timeOutSecond int64) {
 	c.init(ctx)
 	var expireTime int64 = 0
 	if timeOutSecond > 0 {
@@ -33,13 +36,18 @@ func (c *cacheUtil) Set(ctx context.Context, key string, value interface{}, time
 	}
 	c.cachePool.Add(key, node)
 
-	priority := expireTime
-	if priority <= 0 {
-		priority = math.MaxInt64
+	if expireTime > 0 {
+		c.timerClear.Push(ctx, key, expireTime)
 	}
 }
 
-func (c *cacheUtil) Get(ctx context.Context, key string) (bool, interface{}, error) {
+func (c *Cache) Delete(ctx context.Context, key string) {
+	c.init(ctx)
+	c.cachePool.Remove(key)
+	c.timerClear.Remove(ctx, key)
+}
+
+func (c *Cache) Get(ctx context.Context, key string) (bool, interface{}, error) {
 	c.init(ctx)
 	node, exist := c.cachePool.Get(key)
 	if !exist {
@@ -49,7 +57,7 @@ func (c *cacheUtil) Get(ctx context.Context, key string) (bool, interface{}, err
 	if cn.expireTime <= 0 {
 		return true, cn.value, nil
 	}
-	if cn.expireTime > time.Now().Unix() {
+	if cn.expireTime < time.Now().Unix() {
 		c.cachePool.Remove(key)
 		return false, nil, nil
 	}
@@ -61,4 +69,4 @@ type cacheNode struct {
 	value      interface{}
 }
 
-var CacheUtil cacheUtil = cacheUtil{}
+//var CacheUtil cacheUtil = cacheUtil{}
