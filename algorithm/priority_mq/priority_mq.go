@@ -2,6 +2,8 @@ package priority_mq
 
 import (
 	"container/heap"
+	"fmt"
+	"strings"
 )
 
 // An Item is something we manage in a priority queue.
@@ -16,8 +18,19 @@ type PriorityMq []*ItemNode
 
 func (pq PriorityMq) Len() int { return len(pq) }
 
+func (pq PriorityMq) String() string {
+	if len(pq) == 0 {
+		return ""
+	}
+	var result []string
+	for _, i := range pq {
+		result = append(result, fmt.Sprintf("%v|%d", i.Value, i.Priority))
+	}
+	return strings.Join(result, ",")
+}
+
 func (pq PriorityMq) Less(i, j int) bool {
-	return pq[i].Priority > pq[j].Priority
+	return pq[i].Priority < pq[j].Priority
 }
 
 func (pq PriorityMq) Swap(i, j int) {

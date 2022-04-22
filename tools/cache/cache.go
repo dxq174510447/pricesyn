@@ -47,26 +47,24 @@ func (c *Cache) Delete(ctx context.Context, key string) {
 	c.timerClear.Remove(ctx, key)
 }
 
-func (c *Cache) Get(ctx context.Context, key string) (bool, interface{}, error) {
+func (c *Cache) Get(ctx context.Context, key string) (interface{}, bool, error) {
 	c.init(ctx)
 	node, exist := c.cachePool.Get(key)
 	if !exist {
-		return false, nil, nil
+		return nil, false, nil
 	}
 	cn := node.(*cacheNode)
 	if cn.expireTime <= 0 {
-		return true, cn.value, nil
+		return cn.value, true, nil
 	}
 	if cn.expireTime < time.Now().Unix() {
 		c.cachePool.Remove(key)
-		return false, nil, nil
+		return nil, false, nil
 	}
-	return true, cn.value, nil
+	return cn.value, true, nil
 }
 
 type cacheNode struct {
 	expireTime int64
 	value      interface{}
 }
-
-//var CacheUtil cacheUtil = cacheUtil{}
