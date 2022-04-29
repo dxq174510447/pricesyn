@@ -12,7 +12,10 @@ func TestMachineUtil_New(t *testing.T) {
 }
 
 func TestMathUtil_Twrailmon(t *testing.T) {
-	MathUtil.Twrailmon(970, 25)
+	m := make(map[string]int)
+	m["a"] = 1
+	fmt.Println(m["a"])
+	//MathUtil.Twrailmon(970, 25)
 }
 
 func HeiheTest(ctx context.Context, content string) (bool, error) {
