@@ -4,7 +4,7 @@ import "context"
 
 type Task interface {
 	Name() string
-	Execute(ctx context.Context, result interface{}, args ...interface{}) (interface{}, error)
+	Execute(ctx context.Context, result interface{}, argument map[string]string, param ...interface{}) (interface{}, error)
 }
 
 type Exception interface {
