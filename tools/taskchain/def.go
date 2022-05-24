@@ -4,6 +4,12 @@ import "context"
 
 type Task interface {
 	Name() string
+	/**
+	Execute
+	result 返回结果
+
+	argument 参数
+	*/
 	Execute(ctx context.Context, result interface{}, argument map[string]string, param ...interface{}) (interface{}, error)
 }
 
