@@ -63,22 +63,38 @@ func (t *TaskChainFactory) RegisterException(ctx context.Context, serviceName st
 	t.exceptions[exception.Name()] = exception
 }
 
-type TaskCommand struct {
-	task Task
-	next Task
+func (t *TaskChainFactory) StartByChainId(ctx context.Context,id string,param ...interface{}) (interface{},error) {
+	if _,ok := t.chainMap[id];!ok {
+		return nil,fmt.Errorf("chain[%s] not found",id)
+	}
+	chain := t.chainMap[id]
+	return chian.
+}
+func (t *TaskChainFactory) StartByChainName(ctx context.Context,name string,param ...interface{}) (interface{},error) {
+	return nil,nil
+}
+func (t *TaskChainFactory) RunByServiceId(ctx context.Context,serviceId string,param ...interface{})(interface{},error){
+
+}
+func (t *TaskChainFactory) RunByServiceIdAndStage(ctx context.Context,serviceId string,param ...interface{})(interface{},error){
+
 }
 
-func (t *TaskCommand) Exec(ctx context.Context) {
-
-}
 
 type TaskChainDef struct {
 	Name    string   `yaml:"name,omitempty"`
 	Version int      `yaml:"version,omitempty"`
-	Stages  []string `yaml:"stages,omitempty"`
+	Stage  []string `yaml:"stage,omitempty"`
 	Failure []string `yaml:"failure,omitempty"`
 }
 
 func (t TaskChainDef) Validate(ctx context.Context) error {
 	return nil
 }
+
+type TaskChainExecutor struct {
+	def *TaskChainDef
+	taskMap map[string]Task
+	failureMap map[string]ExceptionTask
+}
+

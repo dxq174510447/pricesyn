@@ -4,16 +4,19 @@ import "context"
 
 type Task interface {
 	Name() string
-	/**
-	Execute
-	result 返回结果
+	/*
+		Execute
 
-	argument 参数
+		result 上一次非空返回结果
+
+		argument 配置文件中的参数
+
+		param 方法参数
 	*/
 	Execute(ctx context.Context, result interface{}, argument map[string]string, param ...interface{}) (interface{}, error)
 }
 
-type Exception interface {
+type ExceptionTask interface {
 	Name() string
-	Callback(ctx context.Context, err error, args ...interface{})
+	Callback(ctx context.Context, err error, argument map[string]string, param ...interface{})
 }
