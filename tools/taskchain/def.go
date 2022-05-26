@@ -18,5 +18,5 @@ type Task interface {
 
 type ExceptionTask interface {
 	Name() string
-	Callback(ctx context.Context, err error, argument map[string]string, param ...interface{})
+	Callback(ctx context.Context, stageName string, err error, param ...interface{}) error
 }
