@@ -20,3 +20,9 @@ type ExceptionTask interface {
 	Name() string
 	Callback(ctx context.Context, stageName string, err error, param ...interface{}) error
 }
+
+type TaskChainService interface {
+	SaveInstance(ctx context.Context, serviceId string, chainName string, chainVersion int) error
+	SaveTaskStage(ctx context.Context, serviceId string, chainName string, chainVersion int, stageId string) error
+	GetTaskId(ctx context.Context, serviceId string, chainId string) error
+}

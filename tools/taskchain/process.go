@@ -17,6 +17,8 @@ type TaskChainFactory struct {
 	exceptionMap map[string]ExceptionTask
 
 	initLock sync.Once
+
+	persistenceService TaskChainService
 }
 
 func (t *TaskChainFactory) init(ctx context.Context) {
@@ -58,12 +60,16 @@ func (t *TaskChainFactory) ParseYaml(ctx context.Context, yamlStr string) error 
 	return nil
 }
 
+func (t *TaskChainFactory) RegisterPersistenceService(ctx context.Context, service TaskChainService) {
+	t.persistenceService = service
+}
+
 func (t *TaskChainFactory) RegisterTask(ctx context.Context, task Task) {
 	t.init(ctx)
 	t.taskMap[task.Name()] = task
 }
 
-func (t *TaskChainFactory) RegisterException(ctx context.Context, serviceName string, exception ExceptionTask) {
+func (t *TaskChainFactory) RegisterException(ctx context.Context, exception ExceptionTask) {
 	t.init(ctx)
 	t.exceptionMap[exception.Name()] = exception
 }
@@ -189,10 +195,13 @@ func (t *TaskChainExecutor) Start(ctx context.Context, serviceId string, param .
 	if err != nil {
 		return nil, err
 	}
-	if t.firstTask != nil {
+	if t.firstTask == nil {
 		return nil, fmt.Errorf("firstTask is nil")
 	}
 	current := t.firstTask
+	if t.factory.persistenceService != nil {
+		t.factory.persistenceService.SaveInstance(ctx, serviceId, t.def.Name, t.def.Version)
+	}
 	return t.processTask(ctx, current, serviceId, param)
 }
 func (t *TaskChainExecutor) processTask(ctx context.Context, task *TaskExecutor,
@@ -201,13 +210,18 @@ func (t *TaskChainExecutor) processTask(ctx context.Context, task *TaskExecutor,
 	var result interface{}
 	var err error
 	for currentTask != nil {
+
+		if t.factory.persistenceService != nil {
+			t.factory.persistenceService.SaveTaskStage(ctx, serviceId, t.def.Name, t.def.Version, currentTask.id)
+		}
+
 		currentResult, currentError := currentTask.Invoke(ctx, result, param)
 		if currentError != nil {
 			err = currentError
 			t.processFailure(ctx, serviceId, currentTask.task.Name(), err, param)
 			break
 		}
-		if !reflect.ValueOf(currentResult).IsZero() {
+		if currentResult != nil && !reflect.ValueOf(currentResult).IsZero() {
 			result = currentResult
 		}
 		currentTask = currentTask.next
