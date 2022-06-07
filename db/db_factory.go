@@ -10,23 +10,22 @@ import (
 )
 
 type DbFactory struct {
-	initLock   sync.Once
-	db         *gorm.DB
-	DbUser     string
-	DbPwd      string
-	DbHost     string
-	DbPort     int
-	DbName     string
-	DbLocation string
-	MaxOpen    int
-	MaxIdle    int
+	initLock sync.Once
+	db       *gorm.DB
+	DbUser   string
+	DbPwd    string
+	DbHost   string
+	DbPort   int
+	DbName   string
+	MaxOpen  int
+	MaxIdle  int
 }
 
 func (d *DbFactory) init() error {
 	var err error
 	d.initLock.Do(func() {
-		var connStr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=%s",
-			d.DbUser, d.DbPwd, d.DbHost, d.DbPort, d.DbName, d.DbLocation)
+		var connStr = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True",
+			d.DbUser, d.DbPwd, d.DbHost, d.DbPort, d.DbName)
 		mysqlDB, err1 := gorm.Open(mysql.Open(connStr))
 		if err1 != nil {
 			err = err1

@@ -2,6 +2,7 @@ package mock
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"pricesyn/tools/taskchain"
 	"pricesyn/util"
@@ -12,14 +13,16 @@ const Eg1 = `
 name: ticket
 version: 1
 stage:
-  - valid
-  - ticketing
-  - orderConfirm
-  - voucherPrint
-  - ticketSuccess
+  - name: valid
+  - name: ticketing
+  - name: orderConfirm
+  - name: voucherPrint
+  - name: ticketSuccess
 failure:
-  - ticketFailure
+  - name: ticketFailure
 `
+
+var pwd = flag.String("pwd", "", "Input Your pwd")
 
 func FactoryInit(ctx context.Context) (*taskchain.TaskChainFactory, error) {
 	factory := &taskchain.TaskChainFactory{}
@@ -34,17 +37,23 @@ func FactoryInit(ctx context.Context) (*taskchain.TaskChainFactory, error) {
 	factory.RegisterTask(ctx, &TicketSuccessTask{})
 
 	factory.RegisterException(ctx, &TicketFailureTask{})
+
+	factory.RegisterPersistenceService(ctx, &DbTaskChainService{
+		pwd: *pwd,
+	})
 	return factory, nil
 }
 
 func TestTaskChainFactory_ParseYaml(t *testing.T) {
+	flag.Parse()
+
 	ctx := context.Background()
 	factory, err := FactoryInit(ctx)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 	param := make(map[string]string)
-	result, err1 := factory.StartByChainId(ctx, "ticket", "service1", param)
+	result, err1 := factory.StartByChainId(ctx, "ticket", "service10", param)
 	if err1 != nil {
 		t.Fatalf("%v", err1)
 	}

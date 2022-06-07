@@ -1,6 +1,8 @@
 package taskchain
 
-import "context"
+import (
+	"context"
+)
 
 type Task interface {
 	Name() string
@@ -22,7 +24,30 @@ type ExceptionTask interface {
 }
 
 type TaskChainService interface {
-	SaveInstance(ctx context.Context, serviceId string, chainName string, chainVersion int) error
-	SaveTaskStage(ctx context.Context, serviceId string, chainName string, chainVersion int, stageId string) error
-	GetTaskId(ctx context.Context, serviceId string, chainId string) error
+	SaveInstance(ctx context.Context, serviceId string, def *TaskChainDef) (string,error)
+	SaveTaskStage(ctx context.Context, serviceId string,stageId string,stageDef *StageDef,def *TaskChainDef) error
+	EndInstance(ctx context.Context, serviceId string, def *TaskChainDef) error
+	GetStageId(ctx context.Context, serviceId string, chainName string) (string,int,error)
+}
+
+
+type waitForSignalException struct {
+	//唤醒之后从（-1 上一个任务 0当前任务 1下一个任务） 开始执行
+	nextStage int
+}
+
+func (w waitForSignalException) Error() string {
+	return ""
+}
+
+type WaitForSignalTask struct {
+
+}
+
+func (w WaitForSignalTask) Name() string {
+	return "stop"
+}
+
+func (w WaitForSignalTask) Execute(ctx context.Context, result interface{}, argument map[string]string, param ...interface{}) (interface{}, error) {
+	return nil,
 }

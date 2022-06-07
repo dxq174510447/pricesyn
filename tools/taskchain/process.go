@@ -74,20 +74,42 @@ func (t *TaskChainFactory) RegisterException(ctx context.Context, exception Exce
 	t.exceptionMap[exception.Name()] = exception
 }
 
-func (t *TaskChainFactory) StartByChainId(ctx context.Context, name string, serviceId string, param ...interface{}) (interface{}, error) {
+func (t *TaskChainFactory) StartByChainId(ctx context.Context, chainName string, serviceId string, param ...interface{}) (interface{}, error) {
 	t.init(ctx)
-	if _, ok := t.latestChainMap[name]; !ok {
-		return nil, fmt.Errorf("chain name[%s] not found", name)
+
+	if t.persistenceService != nil {
+		stageId, chainVersion, err := t.persistenceService.GetStageId(ctx, serviceId, chainName)
+		if err != nil {
+			return nil, err
+		}
+		if len(stageId) > 0 && chainVersion > 0 {
+			chainId := fmt.Sprintf("%s-%d", chainName, chainVersion)
+			if _, ok := t.chainMap[chainId]; !ok {
+				return nil, fmt.Errorf("chain id[%s] not found", chainId)
+			}
+			chain := t.chainMap[chainId]
+			fmt.Printf("[%s:%d] %s start from %s\n", chain.def.Name, chain.def.Version, serviceId, stageId)
+			return chain.StartFromStage(ctx, serviceId, stageId, param)
+		}
 	}
-	chain := t.latestChainMap[name]
+
+	if _, ok := t.latestChainMap[chainName]; !ok {
+		return nil, fmt.Errorf("chain name[%s] not found", chainName)
+	}
+	chain := t.latestChainMap[chainName]
+	fmt.Printf("[%s:%d] %s start from begin\n", chain.def.Name, chain.def.Version, serviceId)
 	return chain.Start(ctx, serviceId, param)
 }
 
 type TaskChainDef struct {
-	Name    string   `yaml:"name,omitempty"`
-	Version int      `yaml:"version,omitempty"`
-	Stage   []string `yaml:"stage,omitempty"`
-	Failure []string `yaml:"failure,omitempty"`
+	Name    string      `yaml:"name,omitempty"`
+	Version int         `yaml:"version,omitempty"`
+	Stage   []*StageDef `yaml:"stage,omitempty"`
+	Failure []*StageDef `yaml:"failure,omitempty"`
+}
+type StageDef struct {
+	Name string            `yaml:"name,omitempty"`
+	Args map[string]string `yaml:"args,omitempty"`
 }
 
 func (t TaskChainDef) Validate(ctx context.Context) error {
@@ -96,6 +118,7 @@ func (t TaskChainDef) Validate(ctx context.Context) error {
 
 type TaskExecutor struct {
 	task     Task
+	taskDef  *StageDef
 	id       string
 	next     *TaskExecutor
 	argument map[string]string
@@ -137,13 +160,13 @@ func (t *TaskChainExecutor) init(ctx context.Context) error {
 		return nil
 	}
 	for _, name := range t.def.Stage {
-		if _, ok := t.factory.taskMap[name]; !ok {
-			return fmt.Errorf("task[%s] not definition", name)
+		if _, ok := t.factory.taskMap[name.Name]; !ok {
+			return fmt.Errorf("task[%s] not definition", name.Name)
 		}
 	}
 	for _, name := range t.def.Failure {
-		if _, ok := t.factory.exceptionMap[name]; !ok {
-			return fmt.Errorf("failure[%s] not definition", name)
+		if _, ok := t.factory.exceptionMap[name.Name]; !ok {
+			return fmt.Errorf("failure[%s] not definition", name.Name)
 		}
 	}
 
@@ -154,11 +177,13 @@ func (t *TaskChainExecutor) init(ctx context.Context) error {
 	var preTask *TaskExecutor
 	var preFailure *ExceptionExecutor
 	for index, name := range t.def.Stage {
-		id := fmt.Sprintf("%s:%d", name, index)
-		instance := t.factory.taskMap[name]
+		id := fmt.Sprintf("%s:%d", name.Name, index)
+		instance := t.factory.taskMap[name.Name]
 		current := &TaskExecutor{
-			task: instance,
-			id:   id,
+			task:     instance,
+			id:       id,
+			argument: name.Args,
+			taskDef:  name,
 		}
 		if index == 0 {
 			t.firstTask = current
@@ -166,16 +191,17 @@ func (t *TaskChainExecutor) init(ctx context.Context) error {
 		if preTask != nil {
 			preTask.next = current
 		}
-		t.taskMap[name] = current
+		t.taskMap[name.Name] = current
 		t.taskIdMap[id] = current
 		preTask = current
 	}
 
 	for index, name := range t.def.Failure {
-		id := fmt.Sprintf("%s:%d", name, index)
-		instance := t.factory.exceptionMap[name]
+		id := fmt.Sprintf("%s:%d", name.Name, index)
+		instance := t.factory.exceptionMap[name.Name]
 		current := &ExceptionExecutor{
 			failure: instance,
+			id:      id,
 		}
 		if index == 0 {
 			t.firstFailure = current
@@ -183,14 +209,28 @@ func (t *TaskChainExecutor) init(ctx context.Context) error {
 		if preFailure != nil {
 			preFailure.next = current
 		}
-		t.failureMap[name] = current
+		t.failureMap[name.Name] = current
 		t.failureIdMap[id] = current
 		preFailure = current
 	}
 	return nil
 }
 
-func (t *TaskChainExecutor) Start(ctx context.Context, serviceId string, param ...interface{}) (interface{}, error) {
+func (t *TaskChainExecutor) StartFromStage(ctx context.Context,
+	serviceId string, stageId string, param ...interface{}) (interface{}, error) {
+	err := t.init(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := t.taskIdMap[stageId]; !ok {
+		return nil, fmt.Errorf("%s:%d task id %s not exists", t.def.Name, t.def.Version, stageId)
+	}
+	current := t.taskIdMap[stageId]
+	return t.processTask(ctx, current, serviceId, param)
+}
+
+func (t *TaskChainExecutor) Start(ctx context.Context,
+	serviceId string, param ...interface{}) (interface{}, error) {
 	err := t.init(ctx)
 	if err != nil {
 		return nil, err
@@ -200,22 +240,31 @@ func (t *TaskChainExecutor) Start(ctx context.Context, serviceId string, param .
 	}
 	current := t.firstTask
 	if t.factory.persistenceService != nil {
-		t.factory.persistenceService.SaveInstance(ctx, serviceId, t.def.Name, t.def.Version)
+		pid, err := t.factory.persistenceService.SaveInstance(ctx, serviceId, t.def)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("[%s:%d] %s start chain %s \n", t.def.Name, t.def.Version, serviceId, pid)
 	}
 	return t.processTask(ctx, current, serviceId, param)
 }
 func (t *TaskChainExecutor) processTask(ctx context.Context, task *TaskExecutor,
 	serviceId string, param ...interface{}) (interface{}, error) {
+
 	currentTask := task
 	var result interface{}
 	var err error
 	for currentTask != nil {
 
+		fmt.Printf("[%s:%d] %s begin invoke task %s \n", t.def.Name, t.def.Version, serviceId, currentTask.taskDef.Name)
 		if t.factory.persistenceService != nil {
-			t.factory.persistenceService.SaveTaskStage(ctx, serviceId, t.def.Name, t.def.Version, currentTask.id)
+			t.factory.persistenceService.SaveTaskStage(ctx, serviceId, currentTask.id, currentTask.taskDef, t.def)
 		}
 
 		currentResult, currentError := currentTask.Invoke(ctx, result, param)
+
+		fmt.Printf("[%s:%d] %s end invoke task %s \n", t.def.Name, t.def.Version, serviceId, currentTask.taskDef.Name)
+
 		if currentError != nil {
 			err = currentError
 			t.processFailure(ctx, serviceId, currentTask.task.Name(), err, param)
@@ -228,6 +277,9 @@ func (t *TaskChainExecutor) processTask(ctx context.Context, task *TaskExecutor,
 	}
 	if err != nil {
 		return nil, err
+	}
+	if currentTask == nil && t.factory.persistenceService != nil {
+		t.factory.persistenceService.EndInstance(ctx, serviceId, t.def)
 	}
 	return result, err
 }
