@@ -53,7 +53,7 @@ func TestTaskChainFactory_ParseYaml(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 	param := make(map[string]string)
-	result, err1 := factory.StartByChainId(ctx, "ticket", "service10", param)
+	result, err1 := factory.StartByChainId(ctx, "ticket", "service11", param)
 	if err1 != nil {
 		t.Fatalf("%v", err1)
 	}
