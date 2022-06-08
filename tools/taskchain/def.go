@@ -24,30 +24,34 @@ type ExceptionTask interface {
 }
 
 type TaskChainService interface {
-	SaveInstance(ctx context.Context, serviceId string, def *TaskChainDef) (string,error)
-	SaveTaskStage(ctx context.Context, serviceId string,stageId string,stageDef *StageDef,def *TaskChainDef) error
+	SaveInstance(ctx context.Context, serviceId string, def *TaskChainDef) (string, error)
+	SaveTaskStage(ctx context.Context, serviceId string, stageId string, stageDef *StageDef, def *TaskChainDef) error
 	EndInstance(ctx context.Context, serviceId string, def *TaskChainDef) error
-	GetStageId(ctx context.Context, serviceId string, chainName string) (string,int,error)
+	GetStageId(ctx context.Context, serviceId string, chainName string) (string, int, error)
 }
 
-
-type waitForSignalException struct {
+type WaitForSignalException struct {
 	//唤醒之后从（-1 上一个任务 0当前任务 1下一个任务） 开始执行
 	nextStage int
 }
 
-func (w waitForSignalException) Error() string {
+func (w WaitForSignalException) Error() string {
 	return ""
 }
 
-type WaitForSignalTask struct {
+func NewWaitForSignalException(nextStage int) *WaitForSignalException {
+	return &WaitForSignalException{
+		nextStage: nextStage,
+	}
+}
 
+type WaitForSignalTask struct {
 }
 
 func (w WaitForSignalTask) Name() string {
-	return "stop"
+	return "_stop"
 }
 
 func (w WaitForSignalTask) Execute(ctx context.Context, result interface{}, argument map[string]string, param ...interface{}) (interface{}, error) {
-	return nil,
+	return nil, NewWaitForSignalException(1)
 }

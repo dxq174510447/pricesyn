@@ -27,6 +27,9 @@ func (t *TaskChainFactory) init(ctx context.Context) {
 		t.latestChainMap = make(map[string]*TaskChainExecutor)
 		t.taskMap = make(map[string]Task)
 		t.exceptionMap = make(map[string]ExceptionTask)
+
+		stop := &WaitForSignalTask{}
+		t.taskMap[stop.Name()] = stop
 	})
 }
 
@@ -121,6 +124,7 @@ type TaskExecutor struct {
 	taskDef  *StageDef
 	id       string
 	next     *TaskExecutor
+	pre      *TaskExecutor
 	argument map[string]string
 }
 
@@ -190,6 +194,7 @@ func (t *TaskChainExecutor) init(ctx context.Context) error {
 		}
 		if preTask != nil {
 			preTask.next = current
+			current.pre = preTask
 		}
 		t.taskMap[name.Name] = current
 		t.taskIdMap[id] = current
@@ -254,24 +259,49 @@ func (t *TaskChainExecutor) processTask(ctx context.Context, task *TaskExecutor,
 	currentTask := task
 	var result interface{}
 	var err error
+
 	for currentTask != nil {
 
-		fmt.Printf("[%s:%d] %s begin invoke task %s \n", t.def.Name, t.def.Version, serviceId, currentTask.taskDef.Name)
 		if t.factory.persistenceService != nil {
 			t.factory.persistenceService.SaveTaskStage(ctx, serviceId, currentTask.id, currentTask.taskDef, t.def)
 		}
 
+		fmt.Printf("[%s:%d] %s begin invoke task %s \n", t.def.Name, t.def.Version, serviceId, currentTask.taskDef.Name)
 		currentResult, currentError := currentTask.Invoke(ctx, result, param)
-
 		fmt.Printf("[%s:%d] %s end invoke task %s \n", t.def.Name, t.def.Version, serviceId, currentTask.taskDef.Name)
 
+		var stopError *WaitForSignalException
 		if currentError != nil {
-			err = currentError
-			t.processFailure(ctx, serviceId, currentTask.task.Name(), err, param)
-			break
+			switch v := currentError.(type) {
+			case WaitForSignalException:
+				stopError = &v
+			case *WaitForSignalException:
+				stopError = v
+			}
+
+			if stopError == nil {
+				err = currentError
+				t.processFailure(ctx, serviceId, currentTask.task.Name(), err, param)
+				break
+			}
 		}
 		if currentResult != nil && !reflect.ValueOf(currentResult).IsZero() {
 			result = currentResult
+		}
+
+		if stopError != nil && t.factory.persistenceService != nil {
+			if stopError.nextStage == 1 {
+				if currentTask.next != nil {
+					t.factory.persistenceService.SaveTaskStage(ctx, serviceId, currentTask.next.id, currentTask.next.taskDef, t.def)
+				}
+			} else if stopError.nextStage == 0 {
+
+			} else if stopError.nextStage == -1 {
+				if currentTask.pre != nil {
+					t.factory.persistenceService.SaveTaskStage(ctx, serviceId, currentTask.pre.id, currentTask.pre.taskDef, t.def)
+				}
+			}
+			break
 		}
 		currentTask = currentTask.next
 	}
