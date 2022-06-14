@@ -77,31 +77,57 @@ func (t *TaskChainFactory) RegisterException(ctx context.Context, exception Exce
 	t.exceptionMap[exception.Name()] = exception
 }
 
-func (t *TaskChainFactory) StartByChainId(ctx context.Context, chainName string, serviceId string, param ...interface{}) (interface{}, error) {
+func (t *TaskChainFactory) Begin(ctx context.Context, chainName string, serviceId string, param ...interface{}) (interface{}, error) {
 	t.init(ctx)
-
-	if t.persistenceService != nil {
-		stageId, chainVersion, err := t.persistenceService.GetStageId(ctx, serviceId, chainName)
-		if err != nil {
-			return nil, err
-		}
-		if len(stageId) > 0 && chainVersion > 0 {
-			chainId := fmt.Sprintf("%s-%d", chainName, chainVersion)
-			if _, ok := t.chainMap[chainId]; !ok {
-				return nil, fmt.Errorf("chain id[%s] not found", chainId)
-			}
-			chain := t.chainMap[chainId]
-			fmt.Printf("[%s:%d] %s start from %s\n", chain.def.Name, chain.def.Version, serviceId, stageId)
-			return chain.StartFromStage(ctx, serviceId, stageId, param)
-		}
-	}
-
 	if _, ok := t.latestChainMap[chainName]; !ok {
 		return nil, fmt.Errorf("chain name[%s] not found", chainName)
 	}
 	chain := t.latestChainMap[chainName]
-	fmt.Printf("[%s:%d] %s start from begin\n", chain.def.Name, chain.def.Version, serviceId)
-	return chain.Start(ctx, serviceId, param)
+	return t.beginWithChan(ctx, chain, serviceId, param)
+}
+
+func (t *TaskChainFactory) BeginWithVersion(ctx context.Context, chainName string, chainVersion int, serviceId string, param ...interface{}) (interface{}, error) {
+	t.init(ctx)
+	chianId := fmt.Sprintf("%s-%d", chainName, chainVersion)
+	if _, ok := t.chainMap[chianId]; !ok {
+		return nil, fmt.Errorf("chain id[%s] not found", chianId)
+	}
+	chain := t.chainMap[chianId]
+	return t.beginWithChan(ctx, chain, serviceId, param)
+}
+
+func (t *TaskChainFactory) beginWithChan(ctx context.Context, chain *TaskChainExecutor, serviceId string, param ...interface{}) (interface{}, error) {
+	return chain.Begin(ctx, serviceId, "", param)
+}
+
+func (t *TaskChainFactory) Start(ctx context.Context, chainName string, serviceId string, param ...interface{}) (interface{}, error) {
+	t.init(ctx)
+	return t.StartWithStageName(ctx, chainName, serviceId, "", param)
+}
+
+func (t *TaskChainFactory) StartWithStageName(ctx context.Context,
+	chainName string, serviceId string, stageName string, param ...interface{}) (interface{}, error) {
+	t.init(ctx)
+
+	if t.persistenceService == nil {
+		return nil, fmt.Errorf("need persistenceService using Start* method")
+	}
+
+	stageId, chainVersion, err := t.persistenceService.GetStageId(ctx, serviceId, chainName)
+	if err != nil {
+		return nil, err
+	}
+	if len(stageId) == 0 {
+		return nil, fmt.Errorf("no chain relation to %s serviceId %s", chainName, serviceId)
+	}
+
+	chainId := fmt.Sprintf("%s-%d", chainName, chainVersion)
+	if _, ok := t.chainMap[chainId]; !ok {
+		return nil, fmt.Errorf("chain id[%s] not found", chainId)
+	}
+	chain := t.chainMap[chainId]
+	fmt.Printf("[%s:%d] %s start from %s\n", chain.def.Name, chain.def.Version, serviceId, stageId)
+	return chain.StartFromStage(ctx, serviceId, stageId, stageName, param)
 }
 
 type TaskChainDef struct {
@@ -221,21 +247,8 @@ func (t *TaskChainExecutor) init(ctx context.Context) error {
 	return nil
 }
 
-func (t *TaskChainExecutor) StartFromStage(ctx context.Context,
-	serviceId string, stageId string, param ...interface{}) (interface{}, error) {
-	err := t.init(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if _, ok := t.taskIdMap[stageId]; !ok {
-		return nil, fmt.Errorf("%s:%d task id %s not exists", t.def.Name, t.def.Version, stageId)
-	}
-	current := t.taskIdMap[stageId]
-	return t.processTask(ctx, current, serviceId, param)
-}
-
-func (t *TaskChainExecutor) Start(ctx context.Context,
-	serviceId string, param ...interface{}) (interface{}, error) {
+func (t *TaskChainExecutor) Begin(ctx context.Context,
+	serviceId string, stageName string, param ...interface{}) (interface{}, error) {
 	err := t.init(ctx)
 	if err != nil {
 		return nil, err
@@ -244,7 +257,21 @@ func (t *TaskChainExecutor) Start(ctx context.Context,
 		return nil, fmt.Errorf("firstTask is nil")
 	}
 	current := t.firstTask
+
+	if len(stageName) > 0 && stageName != current.taskDef.Name {
+		return nil, fmt.Errorf("serviceId %s current stage %s,not begin with %s", serviceId, current.taskDef.Name, stageName)
+	}
+
 	if t.factory.persistenceService != nil {
+
+		stageId1, _, err := t.factory.persistenceService.GetStageId(ctx, serviceId, t.def.Name)
+		if err != nil {
+			return nil, err
+		}
+		if len(stageId1) > 0 {
+			return nil, fmt.Errorf("chian[%s] alreay has serviceId %s", t.def.Name, serviceId)
+		}
+
 		pid, err := t.factory.persistenceService.SaveInstance(ctx, serviceId, t.def)
 		if err != nil {
 			return nil, err
@@ -253,6 +280,23 @@ func (t *TaskChainExecutor) Start(ctx context.Context,
 	}
 	return t.processTask(ctx, current, serviceId, param)
 }
+
+func (t *TaskChainExecutor) StartFromStage(ctx context.Context,
+	serviceId string, stageId string, stageName string, param ...interface{}) (interface{}, error) {
+	err := t.init(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := t.taskIdMap[stageId]; !ok {
+		return nil, fmt.Errorf("%s:%d task id %s not exists", t.def.Name, t.def.Version, stageId)
+	}
+	current := t.taskIdMap[stageId]
+	if len(stageName) > 0 && stageName != current.taskDef.Name {
+		return nil, fmt.Errorf("serviceId %s current stage %s,not begin with %s", serviceId, current.taskDef.Name, stageName)
+	}
+	return t.processTask(ctx, current, serviceId, param)
+}
+
 func (t *TaskChainExecutor) processTask(ctx context.Context, task *TaskExecutor,
 	serviceId string, param ...interface{}) (interface{}, error) {
 
