@@ -109,6 +109,7 @@ func (d *DbTaskChainService) SaveTaskStage(ctx context.Context, serviceId string
 	err = d.db.WithContext(ctx).Table(table.TableName()).Where("id = ?", id).Updates(map[string]interface{}{
 		"stage_id":   stageId,
 		"stage_name": stageDef.Name,
+		"finish":     0,
 	}).Error
 	return err
 }
@@ -126,10 +127,10 @@ func (d *DbTaskChainService) EndInstance(ctx context.Context, serviceId string, 
 	return err
 }
 
-func (d *DbTaskChainService) GetStageId(ctx context.Context, serviceId string, chainName string) (string, int, error) {
+func (d *DbTaskChainService) GetStageId(ctx context.Context, serviceId string, chainName string) (string, int, int, error) {
 	err := d.init(ctx)
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
 	var result []*TaskChain
 	err = d.db.WithContext(ctx).Table(table.TableName()).Where(map[string]interface{}{
@@ -137,12 +138,12 @@ func (d *DbTaskChainService) GetStageId(ctx context.Context, serviceId string, c
 		"service_id": serviceId,
 	}).Order("id desc").Find(&result).Error
 	if err != nil {
-		return "", 0, err
+		return "", 0, 0, err
 	}
 	if len(result) == 0 {
-		return "", 0, nil
+		return "", 0, 0, nil
 	}
-	return result[0].StageId, result[0].Version, nil
+	return result[0].StageId, result[0].Version, result[0].Finish, nil
 }
 
 var table TaskChain = TaskChain{}

@@ -37,6 +37,7 @@ failure:
 `
 
 var pwd = flag.String("pwd", "", "Input Your pwd")
+var ChainName = "ticket"
 
 func FactoryInit(ctx context.Context) (*taskchain.TaskChainFactory, error) {
 	factory := &taskchain.TaskChainFactory{}
@@ -62,7 +63,7 @@ func FactoryInit(ctx context.Context) (*taskchain.TaskChainFactory, error) {
 	return factory, nil
 }
 
-func TestTaskChainFactory_ParseYaml(t *testing.T) {
+func TestTaskChainFactory_Begin(t *testing.T) {
 	flag.Parse()
 
 	ctx := context.Background()
@@ -70,8 +71,12 @@ func TestTaskChainFactory_ParseYaml(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
+	serviceId := "a114"
 	param := make(map[string]string)
-	result, err1 := factory.Start(ctx, "ticket", "service15", param)
+	param["serviceId"] = serviceId
+	result, err1 := factory.Begin(ctx, ChainName, serviceId, param)
+	//result, err1 := factory.BeginWithVersion(ctx,ChainName,1,serviceId,param)
+
 	if err1 != nil {
 		t.Fatalf("%v", err1)
 	}
@@ -82,7 +87,7 @@ func TestTaskChainFactory_ParseYaml(t *testing.T) {
 	}
 }
 
-func TestTaskChainFactory_Eg2(t *testing.T) {
+func TestTaskChainFactory_Start(t *testing.T) {
 	flag.Parse()
 
 	ctx := context.Background()
@@ -90,8 +95,14 @@ func TestTaskChainFactory_Eg2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
+
+	serviceId := "a114"
 	param := make(map[string]string)
-	result, err1 := factory.Start(ctx, "ticket", "service14", param)
+	param["serviceId"] = serviceId
+
+	//result, err1 := factory.StartTask(ctx, ChainName, serviceId, param)
+	result, err1 := factory.ReStartTaskWithStageName(ctx, ChainName, serviceId, "ticketing", param)
+	//result, err1 := factory.StartTaskWithStageName(ctx, ChainName, serviceId,"voucherPrint", param)
 	if err1 != nil {
 		t.Fatalf("%v", err1)
 	}

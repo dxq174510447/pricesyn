@@ -27,7 +27,7 @@ type TaskChainService interface {
 	SaveInstance(ctx context.Context, serviceId string, def *TaskChainDef) (string, error)
 	SaveTaskStage(ctx context.Context, serviceId string, stageId string, stageDef *StageDef, def *TaskChainDef) error
 	EndInstance(ctx context.Context, serviceId string, def *TaskChainDef) error
-	GetStageId(ctx context.Context, serviceId string, chainName string) (string, int, error)
+	GetStageId(ctx context.Context, serviceId string, chainName string) (string, int, int, error)
 }
 
 type WaitForSignalException struct {
