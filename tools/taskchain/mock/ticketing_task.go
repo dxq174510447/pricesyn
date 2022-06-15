@@ -14,5 +14,9 @@ func (v TicketingTask) Name() string {
 
 func (v TicketingTask) Execute(ctx context.Context, result interface{}, argument map[string]string, param ...interface{}) (interface{}, error) {
 	fmt.Println("execute ticketing")
-	return nil, nil
+	//return nil, nil
+	//return nil,fmt.Errorf("%s","error in ticketing")
+	r := make(map[string]string)
+	r["a"] = "a"
+	return r, nil
 }

@@ -71,7 +71,7 @@ func TestTaskChainFactory_Begin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	serviceId := "a114"
+	serviceId := "a115"
 	param := make(map[string]string)
 	param["serviceId"] = serviceId
 	result, err1 := factory.Begin(ctx, ChainName, serviceId, param)
@@ -96,7 +96,7 @@ func TestTaskChainFactory_Start(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	serviceId := "a114"
+	serviceId := "a115"
 	param := make(map[string]string)
 	param["serviceId"] = serviceId
 
