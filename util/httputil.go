@@ -15,7 +15,6 @@ import (
 )
 
 type httpUtil struct {
-
 }
 
 func (h *httpUtil) IsTimeOutError(err error) bool {
@@ -32,7 +31,7 @@ func (h *httpUtil) IsTimeOutError(err error) bool {
 }
 
 func (h *httpUtil) PostBody(ctx context.Context, client *http.Client, url string,
-	requestBody interface{}, responseBody interface{},header map[string]string) error {
+	requestBody interface{}, responseBody interface{}, header map[string]string) error {
 
 	var reqBody []byte
 	var err error
@@ -40,7 +39,7 @@ func (h *httpUtil) PostBody(ctx context.Context, client *http.Client, url string
 	if reflect.TypeOf(requestBody).Kind() == reflect.String {
 		str := requestBody.(string)
 		reqBody = []byte(str)
-	}else{
+	} else {
 		reqBody, err = json.Marshal(requestBody)
 	}
 
@@ -55,7 +54,7 @@ func (h *httpUtil) PostBody(ctx context.Context, client *http.Client, url string
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	if len(header) > 0 {
-		for k,v := range header {
+		for k, v := range header {
 			httpReq.Header.Set(k, v)
 		}
 	}
@@ -77,16 +76,47 @@ func (h *httpUtil) PostBody(ctx context.Context, client *http.Client, url string
 	return nil
 }
 
+func (h *httpUtil) Get(ctx context.Context, client1 *http.Client, url string, header map[string]string) ([]byte, error) {
+
+	client := client1
+	if client == nil {
+		client = h.GetHttpClient(10, 30, "")
+	}
+
+	var err error
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	if len(header) > 0 {
+		for k, v := range header {
+			httpReq.Header.Set(k, v)
+		}
+	}
+
+	response, err := client.Do(httpReq)
+
+	if err != nil {
+		return nil, err
+	}
+	res, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // 创建默认httpclient 插入第三方api中 实现请求日志打印，（监控等）
-func (h *httpUtil) GetHttpClient(timeout int, keepalive int,proxyUrl string) *http.Client {
-	roundTripper := h.GetHttpRoundTripper(timeout,keepalive,proxyUrl)
+func (h *httpUtil) GetHttpClient(timeout int, keepalive int, proxyUrl string) *http.Client {
+	roundTripper := h.GetHttpRoundTripper(timeout, keepalive, proxyUrl)
 	var client = http.Client{
 		Transport: http.RoundTripper(roundTripper),
 	}
 	return &client
 }
 
-func (h *httpUtil) GetHttpRoundTripper(timeout int, keepalive int,proxyUrl string) http.RoundTripper {
+func (h *httpUtil) GetHttpRoundTripper(timeout int, keepalive int, proxyUrl string) http.RoundTripper {
 	var transport *http.Transport = &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   time.Duration(timeout) * time.Second,
@@ -111,8 +141,6 @@ func (h *httpUtil) GetHttpRoundTripper(timeout int, keepalive int,proxyUrl strin
 
 	return http.RoundTripper(tripper)
 }
-
-
 
 type platformTimeoutError struct {
 }
