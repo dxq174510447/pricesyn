@@ -2,6 +2,7 @@ package influx
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"math"
 	"pricesyn/file"
@@ -10,11 +11,14 @@ import (
 	"time"
 )
 
+var token = flag.String("token", "", "Input Your pwd")
+
 func TestInfluxClient_WriteMsg(t *testing.T) {
+	flag.Parse()
 	ctx := context.Background()
 
 	client := InfluxClient{
-		Token: "KJkWWuCI8frlZm-7juZeBBUfnYfObPiKhXd66cTIRvzKQP_T-R_vMx-P1CtGRGq6chsNKVeqnXsGywHDuYxeHw==",
+		Token: "",
 		Url:   "http://10.2.10.12:8086",
 	}
 
