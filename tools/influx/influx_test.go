@@ -18,7 +18,7 @@ func TestInfluxClient_WriteMsg(t *testing.T) {
 	ctx := context.Background()
 
 	client := InfluxClient{
-		Token: "",
+		Token: *token,
 		Url:   "http://10.2.10.12:8086",
 	}
 
