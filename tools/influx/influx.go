@@ -46,11 +46,10 @@ func (i *InfluxClient) GetWriteClient(ctx context.Context, org string, bucket st
 	return writeApi
 }
 
-func (i *InfluxClient) WriteMsg(ctx context.Context, org string, bucket string, measurement string, tags map[string]string, d *time.Time) {
+func (i *InfluxClient) WriteMsg(ctx context.Context, org string, bucket string, measurement string, tags map[string]string, fields map[string]interface{}, d *time.Time) {
 	i.init(ctx)
 	api := i.GetWriteClient(ctx, org, bucket)
 
-	fields := make(map[string]interface{})
 	p := influxdb2.NewPoint(measurement, tags, fields, *d)
 	api.WritePoint(p)
 	api.Flush()

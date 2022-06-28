@@ -3,7 +3,6 @@ package influx
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math"
 	"pricesyn/file"
 	"pricesyn/util"
@@ -51,11 +50,14 @@ func TestInfluxClient_WriteMsg(t *testing.T) {
 		tags["status"] = ticketStatus
 		tags["supplier"] = supplierType
 		tags["quantity"] = guestQuantity
-		tags["period"] = fmt.Sprintf("%d", int(math.Ceil(duration)))
-		tags["activity_date"] = util.DateUtil.FormatByType(t3, util.DatePattern1)
+		//tags["period"] = fmt.Sprintf("%d", int(math.Ceil(duration)))
+		tags["activity_date"] = util.DateUtil.FormatByType(t3, util.DatePattern4)
 		tags["begin"] = util.DateUtil.FormatByType(t1, util.DatePattern1)
 
-		client.WriteMsg(ctx, "klook", "ktest", "cruise", tags, t1)
+		//fmt.Println(util.JsonUtil.To2String(tags))
+		fields := make(map[string]interface{})
+		fields["period"] = int(math.Ceil(duration))
+		client.WriteMsg(ctx, "klook", "cruise", "sell", tags, fields, t1)
 	})
 
 	//time.Sleep(time.Second * 100)
