@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"pricesyn/tools/taskchain"
+	"pricesyn/tools/taskflow"
 	"pricesyn/util"
 	"testing"
 )
@@ -18,8 +18,6 @@ stage:
   - name: orderConfirm
   - name: voucherPrint
   - name: ticketSuccess
-failure:
-  - name: ticketFailure
 `
 
 const Eg2 = `
@@ -29,18 +27,19 @@ stage:
   - name: valid
   - name: ticketing
   - name: orderConfirm
+    failure:
+    - ticketFailure
+    - ticketFailure
   - name: _stop
   - name: voucherPrint
   - name: ticketSuccess
-failure:
-  - name: ticketFailure
 `
 
 var pwd = flag.String("pwd", "", "Input Your pwd")
 var ChainName = "ticket"
 
-func FactoryInit(ctx context.Context) (*taskchain.TaskChainFactory, error) {
-	factory := &taskchain.TaskChainFactory{}
+func FactoryInit(ctx context.Context) (*taskflow.TaskflowFactory, error) {
+	factory := &taskflow.TaskflowFactory{}
 	err := factory.ParseYaml(ctx, Eg1)
 	if err != nil {
 		return nil, err
@@ -63,6 +62,8 @@ func FactoryInit(ctx context.Context) (*taskchain.TaskChainFactory, error) {
 	return factory, nil
 }
 
+var serviceId string = "aaaa1"
+
 func TestTaskChainFactory_Begin(t *testing.T) {
 	flag.Parse()
 
@@ -71,7 +72,7 @@ func TestTaskChainFactory_Begin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	serviceId := "a115"
+
 	param := make(map[string]string)
 	param["serviceId"] = serviceId
 	result, err1 := factory.Begin(ctx, ChainName, serviceId, param)
@@ -96,13 +97,12 @@ func TestTaskChainFactory_Start(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	serviceId := "a115"
 	param := make(map[string]string)
 	param["serviceId"] = serviceId
 
 	//result, err1 := factory.StartTask(ctx, ChainName, serviceId, param)
-	result, err1 := factory.ReStartTaskWithStageName(ctx, ChainName, serviceId, "ticketing", param)
-	//result, err1 := factory.StartTaskWithStageName(ctx, ChainName, serviceId,"voucherPrint", param)
+	//result, err1 := factory.ReStartTaskWithStageName(ctx, ChainName, serviceId, "ticketing", param)
+	result, err1 := factory.StartTaskWithStageName(ctx, ChainName, serviceId, "voucherPrint", param)
 	if err1 != nil {
 		t.Fatalf("%v", err1)
 	}

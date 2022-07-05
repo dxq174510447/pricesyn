@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gorm.io/gorm"
 	"pricesyn/db"
-	"pricesyn/tools/taskchain"
+	"pricesyn/tools/taskflow"
 	"strconv"
 	"sync"
 )
@@ -28,7 +28,7 @@ type DbTaskChainService struct {
 	pwd      string
 }
 
-var _ taskchain.TaskChainService = (*DbTaskChainService)(nil)
+var _ taskflow.TaskChainService = (*DbTaskChainService)(nil)
 
 func (d *DbTaskChainService) init(ctx context.Context) error {
 
@@ -58,7 +58,7 @@ func (d *DbTaskChainService) init(ctx context.Context) error {
 	return nil
 }
 
-func (d *DbTaskChainService) getInstanceId(ctx context.Context, serviceId string, def *taskchain.TaskChainDef) (int64, error) {
+func (d *DbTaskChainService) getInstanceId(ctx context.Context, serviceId string, def *taskflow.TaskflowDef) (int64, error) {
 	err := d.init(ctx)
 	if err != nil {
 		return 0, err
@@ -78,7 +78,7 @@ func (d *DbTaskChainService) getInstanceId(ctx context.Context, serviceId string
 	return result[0].Id, nil
 }
 
-func (d *DbTaskChainService) SaveInstance(ctx context.Context, serviceId string, def *taskchain.TaskChainDef) (string, error) {
+func (d *DbTaskChainService) SaveInstance(ctx context.Context, serviceId string, def *taskflow.TaskflowDef) (string, error) {
 	err := d.init(ctx)
 	if err != nil {
 		return "", err
@@ -99,7 +99,7 @@ func (d *DbTaskChainService) SaveInstance(ctx context.Context, serviceId string,
 }
 
 func (d *DbTaskChainService) SaveTaskStage(ctx context.Context, serviceId string, stageId string,
-	stageDef *taskchain.StageDef, def *taskchain.TaskChainDef) error {
+	stageDef *taskflow.StageDef, def *taskflow.TaskflowDef) error {
 
 	id, err := d.getInstanceId(ctx, serviceId, def)
 	if err != nil {
@@ -114,7 +114,7 @@ func (d *DbTaskChainService) SaveTaskStage(ctx context.Context, serviceId string
 	return err
 }
 
-func (d *DbTaskChainService) EndInstance(ctx context.Context, serviceId string, def *taskchain.TaskChainDef) error {
+func (d *DbTaskChainService) EndInstance(ctx context.Context, serviceId string, def *taskflow.TaskflowDef) error {
 
 	id, err := d.getInstanceId(ctx, serviceId, def)
 	if err != nil {
