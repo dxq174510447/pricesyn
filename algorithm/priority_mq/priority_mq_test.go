@@ -14,18 +14,23 @@ func TestPriorityMq_Push(t *testing.T) {
 		Value:    "b",
 		Priority: 2,
 	})
-	heap.Push(mq, &ItemNode{
-		Value:    "d",
-		Priority: 4,
-	})
+	fmt.Printf("%v\n", mq)
 	heap.Push(mq, &ItemNode{
 		Value:    "e",
 		Priority: 5,
 	})
+	fmt.Printf("%v\n", mq)
+	heap.Push(mq, &ItemNode{
+		Value:    "d",
+		Priority: 4,
+	})
+
+	fmt.Printf("%v\n", mq)
 	heap.Push(mq, &ItemNode{
 		Value:    "a",
 		Priority: 1,
 	})
+	fmt.Printf("%v\n", mq)
 	heap.Push(mq, &ItemNode{
 		Value:    "c",
 		Priority: 3,
